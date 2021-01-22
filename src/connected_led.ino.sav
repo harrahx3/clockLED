@@ -1,0 +1,270 @@
+
+#include <WiFiManager.h>
+#include "time.h"
+
+#include <FastLED.h>
+
+#include <ESPAsyncWebServer.h>
+#include <SPIFFS.h>
+
+// How many leds in your strip?
+#define NUM_LEDS 12
+#define BRIGHTNESS 30
+
+
+
+CRGBPalette16 currentPalette;
+TBlendType    currentBlending;
+
+int selectedLed=0;
+bool showPalette=true;
+bool showTime=false;
+
+extern CRGBPalette16 myRedWhiteBluePalette;
+extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
+
+
+// For led chips like WS2812, which have a data line, ground, and power, you just
+// need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
+// ground, and power), like the LPD8806 define both DATA_PIN and CLOCK_PIN
+// Clock pin only needed for SPI based chipsets when not using hardware SPI
+#define DATA_PIN 25
+
+// Define the array of leds
+CRGB leds[NUM_LEDS];
+
+//const char* ssid     = "SFR_EBEF";
+//const char* password = "c6kphxmvqdhsflvgwaj7";
+
+const char* ssid     = "SFR_0E38";
+const char* password = "39vuqw5msd68qjti5mmb";
+
+const char* ntpServer = "pool.ntp.org";
+const long  gmtOffset_sec = 3600;
+const int   daylightOffset_sec = 3600;
+
+AsyncWebServer server(80);
+WiFiManager wm;
+
+void setup(){
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, NUM_LEDS);
+  FastLED.setBrightness(BRIGHTNESS);
+
+
+  currentPalette = RainbowColors_p;
+  currentBlending = LINEARBLEND;
+
+  Serial.begin(115200);
+
+  // Connect to Wi-Fi
+/*  Serial.print("Connecting to ");
+  Serial.println(ssid);
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("");
+  Serial.println("WiFi connected.");
+*/
+   //----------------------------------------------------WIFI
+  /*WiFi.begin(ssid, password);
+  Serial.print("Tentative de connexion...");
+
+  while (WiFi.status() != WL_CONNECTED)
+  {
+    Serial.print(".");
+    delay(100);
+  }*/
+
+  WiFi.mode(WIFI_STA);
+
+
+  if(!wm.autoConnect(ssid, password))
+    Serial.println("Erreur de connexion.");
+  else
+    Serial.println("Connexion etablie!");
+
+  Serial.println("\n");
+  Serial.println("Connexion etablie!");
+  Serial.print("Adresse IP: ");
+  Serial.println(WiFi.localIP());
+
+  // Init and get the time
+  configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+  printLocalTime();
+
+  //disconnect WiFi as it's no longer needed
+ /* WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  */
+
+    //----------------------------------------------------SPIFFS
+  if (!SPIFFS.begin())
+  {
+    Serial.println("Erreur SPIFFS...");
+    return;
+  }
+
+  File root = SPIFFS.open("/");
+  File file = root.openNextFile();
+
+  while (file)
+  {
+    Serial.print("File: ");
+    Serial.println(file.name());
+    file.close();
+    file = root.openNextFile();
+  }
+
+    //----------------------------------------------------SERVER
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/index.html", "text/html");
+  });
+
+  server.on("/script_led.js", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(SPIFFS, "/script_led.js", "text/javascript");
+  });
+
+  server.on("/submitPaletteForm", HTTP_POST, [](AsyncWebServerRequest *request) {
+    showPalette=true;
+    Serial.println("post");
+    if(request->hasParam("selected_item", true))
+    {
+      String message;
+      message = request->getParam("selected_item", true)->value();
+      int secondHand = message.toInt();
+      Serial.println(message);
+      Serial.println(secondHand);
+      if( secondHand ==  0)  { currentPalette = RainbowColors_p;         currentBlending = LINEARBLEND; }
+      if( secondHand == 10)  { currentPalette = RainbowStripeColors_p;   currentBlending = NOBLEND;  }
+      if( secondHand == 15)  { currentPalette = RainbowStripeColors_p;   currentBlending = LINEARBLEND; }
+     if( secondHand == 20)  { currentPalette = OceanColors_p;             currentBlending = LINEARBLEND; }
+     if( secondHand == 25)  { currentPalette = CloudColors_p;              currentBlending = LINEARBLEND; }
+     if( secondHand == 30)  { currentPalette = ForestColors_p;       currentBlending = NOBLEND; }
+     if( secondHand == 35)  { currentPalette = LavaColors_p;       currentBlending = LINEARBLEND; }
+     if( secondHand == 40)  { currentPalette = CloudColors_p;           currentBlending = LINEARBLEND; }
+     if( secondHand == 45)  { currentPalette = PartyColors_p;           currentBlending = LINEARBLEND; }
+     // if( secondHand == 50)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = NOBLEND;  }
+     // if( secondHand == 55)  { currentPalette = myRedWhiteBluePalette_p; currentBlending = LINEARBLEND; }
+    }
+    request->send(204);
+  });
+
+ server.on("/submitRGBForm", HTTP_POST, [](AsyncWebServerRequest *request) {
+    showPalette=false;
+    Serial.println("post");
+    if(request->hasParam("R", true) && request->hasParam("G", true) && request->hasParam("B", true))
+    {
+      String red = request->getParam("R", true)->value();
+      String green = request->getParam("G", true)->value();
+      String blue = request->getParam("B", true)->value();
+      leds[selectedLed] = CRGB(red.toInt(), green.toInt(), blue.toInt());
+
+    }
+    request->send(204);
+  });
+
+ server.on("/submitHSVForm", HTTP_POST, [](AsyncWebServerRequest *request) {
+    showPalette=false;
+    Serial.println("post");
+    if(request->hasParam("H", true) && request->hasParam("S", true) && request->hasParam("V", true))
+    {
+      String hue = request->getParam("H", true)->value();
+      String sat = request->getParam("S", true)->value();
+      String val = request->getParam("V", true)->value();
+      leds[selectedLed] = CHSV(hue.toInt(), sat.toInt(), val.toInt());
+
+    }
+    request->send(204);
+  });
+
+
+  server.begin();
+}
+
+void loop(){
+  //delay(1000);
+
+  if (showTime) {
+    printLocalTime();
+  }
+
+  if (showPalette){
+    static uint8_t startIndex = 0;
+    startIndex += 1; /* motion speed */
+
+    FillLEDsFromPaletteColors(startIndex);
+  }
+
+  FastLED.show();
+  FastLED.delay(1000/10);
+}
+
+void printLocalTime(){
+  struct tm timeinfo;
+  if(!getLocalTime(&timeinfo)){
+    Serial.println("Failed to obtain time");
+    return;
+  }
+  Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+  Serial.print("Day of week: ");
+  Serial.println(&timeinfo, "%A");
+  Serial.print("Month: ");
+  Serial.println(&timeinfo, "%B");
+  Serial.print("Day of Month: ");
+  Serial.println(&timeinfo, "%d");
+  Serial.print("Year: ");
+  Serial.println(&timeinfo, "%Y");
+  Serial.print("Hour: ");
+  Serial.println(&timeinfo, "%H");
+  Serial.print("Hour (12 hour format): ");
+  Serial.println(&timeinfo, "%I");
+  Serial.print("Minute: ");
+  Serial.println(&timeinfo, "%M");
+  Serial.print("Second: ");
+  Serial.println(&timeinfo, "%S");
+
+  Serial.println("Time variables");
+  char timeHour[3];
+  strftime(timeHour,3, "%H", &timeinfo);
+  Serial.println(timeHour);
+  char timeWeekDay[10];
+  strftime(timeWeekDay,10, "%A", &timeinfo);
+  Serial.println(timeWeekDay);
+  Serial.println();
+
+  leds[0] = CRGB::Blue;
+  FastLED.show();
+
+  char timeHour12[3];
+  strftime(timeHour12, 3, "%I", &timeinfo);
+  Serial.println(timeHour12);
+  int a = std::atoi( timeHour12 );
+  Serial.println(a);
+  leds[a] = CRGB::Red;
+
+  char timeMinute12[3];
+  strftime(timeMinute12, 3, "%M", &timeinfo);
+  Serial.println(timeMinute12);
+  int b = std::atoi( timeMinute12 )*12/60;
+  Serial.println(b);
+  leds[b] = CRGB::Green;
+
+  FastLED.show();
+
+  for (int i=0; i<NUM_LEDS; i++){
+    leds[i] = CRGB::Black;
+  }
+
+}
+
+void FillLEDsFromPaletteColors(uint8_t colorIndex)
+{
+    uint8_t brightness = BRIGHTNESS;
+
+    for( int i = 0; i < NUM_LEDS; i++) {
+        leds[i] = ColorFromPalette(currentPalette, colorIndex, brightness, currentBlending);
+        colorIndex += 3;
+    }
+}

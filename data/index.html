@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<title>Connected LED !</title>
+	<!-- bootstrap latest compiled and minified CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+
+</head>
+
+<body>
+
+	<div class="jumbotron text-center">
+		<h1>Contol LEDs !</h1>
+	</div>
+
+	<div class="container">
+		<div class="row">
+			<div class="col-sm-4">
+				<h3>Column 1</h3>
+				<p>Lorem ipsum dolor..</p>
+			</div>
+			<div class="col-sm-4">
+				<h3>Column 2</h3>
+				<p>Lorem ipsum dolor..</p>
+			</div>
+			<div class="col-sm-4">
+				<h3>Column 3</h3>
+				<p>Lorem ipsum dolor..</p>
+			</div>
+		</div>
+	</div>
+
+	<form action="submitPaletteForm" method="post">
+		<select name="selected_item">
+			<option value="0">RainbowColors_p</option>
+			<option value="10">RainbowStripeColors_p NOBLEND</option>
+			<option value="15">RainbowStripeColors_p LINEARBLEND</option>
+			<option value="20">OceanColors_p</option>
+			<option value="25">CloudColors_p</option>
+			<option value="35">LavaColors_p</option>
+			<option value="30">ForestColors_p</option>
+			<option value="45">PartyColors_p</option>
+
+		</select>
+
+		<button class="btn btn-primary" type="submit">Change Palette</button>
+
+	</form>
+
+	<form action="submitRGBForm" method="post">
+		<label for="R">R: </label><input type="number" name="R">
+		<label for="G">G: </label><input type="number" name="G">
+		<label for="B">B: </label><input type="number" name="B">
+
+		<button class="btn btn-primary" type="submit">Change RGB</button>
+
+	</form>
+
+	<form action="submitHSVForm" method="post">
+		<label for="H">H: </label><input type="number" name="H">
+		<label for="S">S: </label><input type="number" name="S">
+		<label for="V">V: </label><input type="number" name="V">
+
+		<button class="btn btn-primary" type="submit">Change HSV</button>
+
+	</form>
+
+	<form action="/showTime" method="post">
+		<button class="btn btn-primary" type="submit">What time is it ?</button>
+	</form>
+
+
+	<!-- jQuery library -->
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+	<!-- bootstrap latest compiled JavaScript -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</body>
+
+</html>
