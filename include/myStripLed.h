@@ -44,6 +44,17 @@ public:
         showPalette
     };
 
+    void setBrightness (unsigned int newB) {
+        newB = newB < 0 ? 0 : newB;
+        newB = newB > 255 ? 255 : newB;
+        brightness = newB;
+    }
+
+    void readPotentiometer (){
+        unsigned int val = analogRead(POTENTIOMETER_PIN);
+        setBrightness(val);
+    }
+
 private:
     int mode = showTime;
 
@@ -53,8 +64,9 @@ private:
     int selectedLed = 0;
 
     const static unsigned int NUM_LEDS = 60; // How many leds in your strip?
-    unsigned int brightness = 3;
-    const static unsigned int DATA_PIN = 25; // ESP32 pin
+    unsigned int brightness = 3; // brightness for palettes
+    const static unsigned int DATA_PIN = 25; // ESP32 pin for LED control
+    const static unsigned int POTENTIOMETER_PIN = 34; // ESP32 pin for Potentiometer -> brightness
 
     CRGB leds[NUM_LEDS];
 

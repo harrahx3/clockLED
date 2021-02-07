@@ -4,6 +4,8 @@
 #include <FastLED.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
 #include "global.h"
 #include "myStripLed.h"
 
@@ -104,7 +106,6 @@ void setServer()
       Serial.println(secondHand);
 
       myStripLed.setMode(1);
-
       myStripLed.changePalette(secondHand);
     }
     request->send(204);
@@ -144,6 +145,94 @@ void setServer()
   server.begin();
 }
 
+StaticJsonDocument<1000> requestJsonApi()
+{
+  HTTPClient client;
+  String apiKey = "0b101241c6ff934b5f348500b3469c60";
+  String query = "q=Lyon,fr&units=metric&appid=" + apiKey + "&lang=fr";
+  String url = String("http://api.openweathermap.org/data/2.5/weather") + String('?') + query;
+  Serial.println('\n' + url + '\n');
+
+  client.begin(url);
+  int httpCode = client.GET();
+  StaticJsonDocument<1000> doc;
+  // DynamicJsonDocument doc(2048); // use if size > 1kB
+
+  if (httpCode > 0)
+  {
+    String payload = client.getString();
+    Serial.println("http request api satuscode: " + String(httpCode));
+    Serial.println(payload);
+
+    char json[500];
+    payload.replace(" ", "");
+    payload.replace("\n", "");
+    payload.trim();
+    //// payload.remove(0, 1);
+    payload.toCharArray(json, 1000);
+    Serial.println(payload);
+
+    if (deserializeJson(doc, json) == DeserializationError::Ok)
+    {
+      client.end();
+      return doc;
+    }
+    else
+    {
+      client.end();
+      return doc;
+      Serial.println(String("deserialisation failed"));
+    }
+  }
+  else
+  {
+    client.end();
+    return doc;
+    Serial.println("Error on HTTP request");
+  }
+}
+
+void changeColorWeather()
+{
+  StaticJsonDocument<1000> doc = requestJsonApi();
+  const char *name = doc["name"];
+  Serial.println(name);
+
+  int id = doc["id"];
+  const char *description = doc["weather"][0]["description"];
+
+  Serial.println(String(id));
+  Serial.println(description);
+
+  myStripLed.setMode(1);
+  uint8_t newPalette = 45;
+  const char *weather = doc["weather"][0]["main"];
+  int weatherId = doc["weather"][0]["id"];
+  Serial.println(weather);
+
+  Serial.println(String(weatherId / 100));
+
+  switch (int(weatherId / 100))
+  {
+  case 2:
+  case 3:
+  case 6:
+  case 5:
+  case 7:
+    newPalette = 25;
+    break;
+
+  case 8:
+    newPalette = 35;
+    break;
+
+  default:
+    break;
+  }
+
+  myStripLed.changePalette(newPalette);
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -151,6 +240,10 @@ void setup()
   setWifi();
   setSPIFFS();
   setServer();
+
+  delay(5000);
+
+  changeColorWeather();
 }
 
 void loop()

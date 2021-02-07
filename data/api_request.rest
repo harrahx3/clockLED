@@ -1,0 +1,12 @@
+GET https://community-open-weather-map.p.rapidapi.com/weather?q=London%2Cuk&lat=0&lon=0&callback=test&id=2172797&lang=null&units=%22metric%22%20or%20%22imperial%22&mode=xml%2C%20html HTTP/1.1
+
+###
+
+GET http://api.openweathermap.org/data/2.5/weather?q=Lyon,fr&units=metric&appid=0b101241c6ff934b5f348500b3469c60&lang=fr
+
+###
+
+GET http://openweathermap.org/img/wn/04d.png
+
+### 
+GET api.openweathermap.org/data/2.5/forecast?q=Lyon,fr&units=metric&appid=0b101241c6ff934b5f348500b3469c60&lang=fr

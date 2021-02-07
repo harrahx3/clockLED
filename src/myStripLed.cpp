@@ -37,7 +37,7 @@ void MyStripLed::printLocalTime()
         Serial.println("Failed to obtain time");
         return;
     }
-    Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
+    /* Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
     Serial.print("Day of week: ");
     Serial.println(&timeinfo, "%A");
     Serial.print("Month: ");
@@ -53,7 +53,7 @@ void MyStripLed::printLocalTime()
     Serial.print("Minute: ");
     Serial.println(&timeinfo, "%M");
     Serial.print("Second: ");
-    Serial.println(&timeinfo, "%S");
+    Serial.println(&timeinfo, "%S"); */
 
     /*Serial.println("Time variables");
     char timeHour[3];
@@ -69,13 +69,13 @@ void MyStripLed::printLocalTime()
 
     char timeHour12_char[3];
     strftime(timeHour12_char, 3, "%I", &timeinfo);
-    Serial.println(timeHour12_char);
+    // Serial.println(timeHour12_char);
     char timeMinute12_char[3];
     strftime(timeMinute12_char, 3, "%M", &timeinfo);
-    Serial.println(timeMinute12_char);
+    // Serial.println(timeMinute12_char);
     char timeSecond_char[3];
     strftime(timeSecond_char, 3, "%S", &timeinfo);
-    Serial.println(timeSecond_char);
+    // Serial.println(timeSecond_char);
     unsigned int timeHour12 = std::atoi(timeHour12_char);
     int timeMinute12 = std::atoi(timeMinute12_char);
     unsigned int timeSecond = std::atoi(timeSecond_char);
@@ -85,7 +85,7 @@ void MyStripLed::printLocalTime()
     timeSecond %= 60;
 
     int hoursLed = (timeHour12 * 5 * 60 + timeMinute12 * 5) / 60;
-    Serial.println(hoursLed);
+    // Serial.println(hoursLed);
     //this->leds[hoursLed] = CRGB::Red;
     for (int i = 0; i <= hoursLed; i++)
     {
@@ -93,11 +93,11 @@ void MyStripLed::printLocalTime()
     }
 
     int secondsLed = timeSecond;
-    Serial.println(secondsLed);
+    // Serial.println(secondsLed);
     this->leds[(secondsLed + 30) % 60] = secondsLedsColor;
 
     int minutesLed = timeMinute12; // * 12 / 60;
-    Serial.println(minutesLed);
+    // Serial.println(minutesLed);
     this->leds[(minutesLed + 30) % 60] = minutesLedsColor;
 
     for (int i = 0; i <= MyStripLed::NUM_LEDS; i++)
