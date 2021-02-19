@@ -2,30 +2,33 @@
 #ifndef MYSTRIPLED_H // include guard
 #define MYSTRIPLED_H
 
-#include <Arduino.h>
-#include <WiFiManager.h>
-#include "time.h"
-#include <FastLED.h>
-#include <ESPAsyncWebServer.h>
-#include <SPIFFS.h>
-#include "global.h"
+#include "networkManager.h"
+
+class NetworkManager;
 
 class MyStripLed
 {
 public:
+    enum Mode
+    {
+        showTime,
+        showPalette,
+        showWeather,
+        onFire
+    };
     MyStripLed();
     void printLocalTime(); // Hours=Red, Minutes=Green
     void fillLEDsFromPaletteColors(uint8_t colorIndex);
     void changePalette(uint8_t secondHand);
-    void setMode(uint8_t p_mode)
+    void setMode(Mode p_mode)
     {
         switch (p_mode)
         {
-        case 0:
+        case Mode::showTime:
             this->mode = showTime;
             break;
-        case 1:
-            this->mode = showPalette;
+        case Mode::showPalette:
+            this->mode = Mode::showPalette;
             break;
 
         default:
@@ -36,36 +39,35 @@ public:
     {
         hoursLedsColor = p_color;
     }
-    void update();
+    void update(NetworkManager *ntwmng);
 
-    enum mode
+    void setBrightness(unsigned int newB)
     {
-        showTime,
-        showPalette
-    };
-
-    void setBrightness (unsigned int newB) {
         newB = newB < 0 ? 0 : newB;
         newB = newB > 255 ? 255 : newB;
         brightness = newB;
     }
 
-    void readPotentiometer (){
+    void readPotentiometer()
+    {
         unsigned int val = analogRead(POTENTIOMETER_PIN);
         setBrightness(val);
     }
 
+    void simulateFire();
+    void changeColorWeather(NetworkManager *ntwmng);
+
 private:
-    int mode = showTime;
+    Mode mode = Mode::showTime;
 
     CRGBPalette16 currentPalette;
     TBlendType currentBlending;
 
     int selectedLed = 0;
 
-    const static unsigned int NUM_LEDS = 60; // How many leds in your strip?
-    unsigned int brightness = 3; // brightness for palettes
-    const static unsigned int DATA_PIN = 25; // ESP32 pin for LED control
+    const static unsigned int NUM_LEDS = 60;          // How many leds in your strip?
+    unsigned int brightness = 3;                      // brightness for palettes
+    const static unsigned int DATA_PIN = 25;          // ESP32 pin for LED control
     const static unsigned int POTENTIOMETER_PIN = 34; // ESP32 pin for Potentiometer -> brightness
 
     CRGB leds[NUM_LEDS];

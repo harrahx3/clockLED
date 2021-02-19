@@ -4,8 +4,14 @@
 #include <FastLED.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include <ArduinoJson.h>
+#include <HTTPClient.h>
+#include <stdio.h>  /* printf, scanf, puts, NULL */
+#include <stdlib.h> /* srand, rand */
+#include <time.h>   /* time */
+#include "networkManager.h"
 #include "myStripLed.h"
-#include "global.h"
+//#include "global.h"
 
 MyStripLed::MyStripLed() // Constructor
 {
@@ -186,17 +192,95 @@ void MyStripLed::changePalette(uint8_t secondHand)
     }*/
 }
 
-void MyStripLed::update()
+void MyStripLed::simulateFire()
 {
+    /* initialize random seed: */
+    srand(time(NULL));
 
-    if (this->mode == showTime)
+    for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
-        this->printLocalTime();
+        leds[i] = CRGB(rand() % 100 + 155, rand() % 50 + 1, rand() % 50 + 1);
+    }
+    /* generate secret number between 1 and 10: */
+    //int iSecret = rand() % 10 + 1;
+
+    FastLED.show();
+}
+
+void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
+{
+    StaticJsonDocument<1000> doc = ntwmng->requestJsonApi();
+    const char *name = doc["name"];
+    Serial.println(name);
+
+    int id = doc["id"];
+    const char *description = doc["weather"][0]["description"];
+
+    Serial.println(String(id));
+    Serial.println(description);
+
+    //this->setMode(MyStripLed::Mode::showPalette);
+    uint8_t newPalette = 45;
+    CRGB newColor = CRGB::Black;
+    const char *weather = doc["weather"][0]["main"];
+    int weatherId = doc["weather"][0]["id"];
+    Serial.println(weather);
+
+    Serial.println(String(weatherId / 100));
+    int tempFeel = doc["main"]["feels_like"];
+
+    switch (int(weatherId / 100))
+    {
+    case 2:
+    case 3:
+    case 6:
+    case 5:
+    case 7:
+        newPalette = 25;
+        newColor = CRGB::Red;
+        break;
+
+    case 8:
+        newPalette = 35;
+        newColor = CRGB::Blue;
+        break;
+
+    default:
+        break;
     }
 
-    if (this->mode == showPalette)
+    for (uint8_t i = 0; i < tempFeel; i++)
     {
+        leds[i] = newColor;
+    }
+    for (uint8_t i = tempFeel; i < NUM_LEDS; i++)
+    {
+        leds[i] = CRGB::Black;
+    }
+    FastLED.show();
+
+    //this->changePalette(newPalette);
+}
+
+void MyStripLed::update(NetworkManager *ntwmng)
+{
+    switch (this->mode)
+    {
+    case Mode::showTime:
+        this->printLocalTime();
+        break;
+    case Mode::showPalette:
         startIndex += motionSpeed; /* motion speed */
         this->fillLEDsFromPaletteColors(startIndex);
+        break;
+    case Mode::showWeather:
+        this->changeColorWeather(ntwmng);
+        FastLED.delay(1000 * 10);
+        break;
+    case Mode::onFire:
+        this->simulateFire();
+        break;
+    default:
+        break;
     }
 }
