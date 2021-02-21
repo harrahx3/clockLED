@@ -2,6 +2,9 @@
 <html>
 
 <head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Connected LED !</title>
 	<!-- bootstrap latest compiled and minified CSS -->
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta2/dist/css/bootstrap.min.css" rel="stylesheet"
@@ -65,8 +68,8 @@
 			<div class="col-sm-2">
 				<form action="submitColorPicker" method="post">
 					<label for="exampleColorInput" class="form-label">Color picker</label>
-					<input type="color" class="form-control  col-auto form-control-color" id="colorInput" name="colorInput"
-						value="#563d7c" title="Choose your color">
+					<input type="color" class="form-control  col-auto form-control-color" id="colorInput"
+						name="colorInput" value="#563d7c" title="Choose your color">
 					<!-- <button type="reset" onclick="console.log($('#colorInput').val())">show value</button> -->
 					<button class="btn btn-primary" type="submit">Change Color</button>
 
@@ -85,6 +88,11 @@
 			<div class="col-sm-1">
 				<form action="/onFire" method="post">
 					<button class="btn btn-primary" type="submit">on Fire</button>
+				</form>
+			</div>
+			<div class="col-sm-1">
+				<form action="/off" method="post">
+					<button class="btn btn-primary" type="submit">turn off</button>
 				</form>
 			</div>
 		</div>

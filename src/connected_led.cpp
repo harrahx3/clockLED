@@ -18,7 +18,7 @@ extern CRGBPalette16 myRedWhiteBluePalette;
 extern const TProgmemPalette16 myRedWhiteBluePalette_p PROGMEM;
 
 MyStripLed myStripLed;
-NetworkManager ntwmng (&myStripLed);
+NetworkManager ntwmng(&myStripLed);
 
 // For led chips like WS2812, which have a data line, ground, and power, you just
 // need to define DATA_PIN.  For led chipsets that are SPI based (four wires - data, clock,
@@ -46,5 +46,5 @@ void loop()
   //delay(1000);
   myStripLed.update(&ntwmng);
   //FastLED.show();
-  FastLED.delay(1000 / 10);
+  // FastLED.delay(1000 / 10);
 }

@@ -192,19 +192,127 @@ void MyStripLed::changePalette(uint8_t secondHand)
     }*/
 }
 
+void MyStripLed::Fire2012()
+{
+    // Array of temperature readings at each simulation cell
+    static byte heat[NUM_LEDS];
+
+    // Step 1.  Cool down every cell a little
+    for (int i = 0; i < NUM_LEDS; i++)
+    {
+        heat[i] = qsub8(heat[i], random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
+    }
+
+    // Step 2.  Heat from each cell drifts 'up' and diffuses a little
+    for (int k = NUM_LEDS - 3; k > 0; k--)
+    {
+        heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
+    }
+
+    // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
+    if (random8() < SPARKING)
+    {
+        int y = random8(7);
+        heat[y] = qadd8(heat[y], random8(160, 255));
+    }
+
+    // Step 4.  Map from heat cells to LED colors
+    for (int j = 0; j < NUM_LEDS; j++)
+    {
+        leds[j] = HeatColor(heat[j]);
+    }
+}
+
+// CRGB HeatColor( uint8_t temperature)
+// [to be included in the forthcoming FastLED v2.1]
+//
+// Approximates a 'black body radiation' spectrum for
+// a given 'heat' level.  This is useful for animations of 'fire'.
+// Heat is specified as an arbitrary scale from 0 (cool) to 255 (hot).
+// This is NOT a chromatically correct 'black body radiation'
+// spectrum, but it's surprisingly close, and it's extremely fast and small.
+//
+// On AVR/Arduino, this typically takes around 70 bytes of program memory,
+// versus 768 bytes for a full 256-entry RGB lookup table.
+
+CRGB MyStripLed::HeatColor(uint8_t temperature)
+{
+    CRGB heatcolor;
+
+    // Scale 'heat' down from 0-255 to 0-191,
+    // which can then be easily divided into three
+    // equal 'thirds' of 64 units each.
+    uint8_t t192 = scale8_video(temperature, 192);
+
+    // calculate a value that ramps up from
+    // zero to 255 in each 'third' of the scale.
+    uint8_t heatramp = t192 & 0x3F; // 0..63
+    heatramp <<= 2;                 // scale up to 0..252
+
+    // now figure out which third of the spectrum we're in:
+    if (t192 & 0x80)
+    {
+        // we're in the hottest third
+        heatcolor.r = 255;      // full red
+        heatcolor.g = 255;      // full green
+        heatcolor.b = heatramp; // ramp up blue
+    }
+    else if (t192 & 0x40)
+    {
+        // we're in the middle third
+        heatcolor.r = 255;      // full red
+        heatcolor.g = heatramp; // ramp up green
+        heatcolor.b = 0;        // no blue
+    }
+    else
+    {
+        // we're in the coolest third
+        heatcolor.r = heatramp; // ramp up red
+        heatcolor.g = 0;        // no green
+        heatcolor.b = 0;        // no blue
+    }
+
+    return heatcolor;
+}
+
 void MyStripLed::simulateFire()
 {
-    /* initialize random seed: */
+    /* // initialize random seed: 
     srand(time(NULL));
 
     for (uint8_t i = 0; i < NUM_LEDS; i++)
     {
-        leds[i] = CRGB(rand() % 100 + 155, rand() % 50 + 1, rand() % 50 + 1);
+        int r = rand() % 50 + 205;
+        int g = rand() % 5;
+        int b = rand() % 1;
+        leds[i] = CRGB(r, g, b);
     }
-    /* generate secret number between 1 and 10: */
+    // generate secret number between 1 and 10: 
     //int iSecret = rand() % 10 + 1;
 
-    FastLED.show();
+    FastLED.show();*/
+    // Fire2012 by Mark Kriegsman, July 2012
+    // as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
+    //
+    // This basic one-dimensional 'fire' simulation works roughly as follows:
+    // There's a underlying array of 'heat' cells, that model the temperature
+    // at each point along the line.  Every cycle through the simulation,
+    // four steps are performed:
+    //  1) All cells cool down a little bit, losing heat to the air
+    //  2) The heat from each cell drifts 'up' and diffuses a little
+    //  3) Sometimes randomly new 'sparks' of heat are added at the bottom
+    //  4) The heat from each cell is rendered as a color into the leds array
+    //     The heat-to-color mapping uses a black-body radiation approximation.
+    //
+    // Temperature is in arbitrary units from 0 (cold black) to 255 (white hot).
+    //
+    // This simulation scales it self a bit depending on NUM_LEDS; it should look
+    // "OK" on anywhere from 20 to 100 LEDs without too much tweaking.
+    //
+    // I recommend running this simulation at anywhere from 30-100 frames per second,
+    // meaning an interframe delay of about 10-35 milliseconds.
+    //
+    //
 }
 
 void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
@@ -213,21 +321,31 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     const char *name = doc["name"];
     Serial.println(name);
 
+    int tempFeel = doc["main"]["temp_min"];
+    Serial.println(tempFeel);
+
+    int visibility = doc["visibility"];
+    Serial.println(visibility);
+
+    int id2 = doc["id"];
+    Serial.println(String(id2));
+    int cod = doc["cod"];
+    Serial.println(String(cod));
+
     int id = doc["id"];
-    const char *description = doc["weather"][0]["description"];
+    //  const char *description = doc["weather"][0]["description"];
 
     Serial.println(String(id));
-    Serial.println(description);
+    // Serial.println(description);
 
     //this->setMode(MyStripLed::Mode::showPalette);
     uint8_t newPalette = 45;
-    CRGB newColor = CRGB::Black;
+    CRGB newColor = CRGB::Green;
     const char *weather = doc["weather"][0]["main"];
     int weatherId = doc["weather"][0]["id"];
+    Serial.println(weatherId);
     Serial.println(weather);
-
     Serial.println(String(weatherId / 100));
-    int tempFeel = doc["main"]["feels_like"];
 
     switch (int(weatherId / 100))
     {
@@ -248,7 +366,9 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     default:
         break;
     }
-
+    Serial.println("feellike");
+    Serial.println(tempFeel);
+    Serial.println(newColor);
     for (uint8_t i = 0; i < tempFeel; i++)
     {
         leds[i] = newColor;
@@ -266,19 +386,39 @@ void MyStripLed::update(NetworkManager *ntwmng)
 {
     switch (this->mode)
     {
+    case Mode::off:
+        for (uint8_t i = 0; i < NUM_LEDS; i++)
+        {
+            if (leds[i])
+            {
+                leds[i] = CRGB::Black;
+                FastLED.show();
+            }
+        }
+
+        FastLED.delay(500);
+        break;
     case Mode::showTime:
         this->printLocalTime();
+        FastLED.delay(100);
         break;
     case Mode::showPalette:
         startIndex += motionSpeed; /* motion speed */
         this->fillLEDsFromPaletteColors(startIndex);
+        FastLED.delay(100);
         break;
     case Mode::showWeather:
         this->changeColorWeather(ntwmng);
-        FastLED.delay(1000 * 10);
+        FastLED.delay(1000 * 5);
         break;
     case Mode::onFire:
-        this->simulateFire();
+        // Add entropy to random number generator; we use a lot of it.
+        random16_add_entropy(random8());
+
+        this->Fire2012(); // run simulation frame
+        //this->simulateFire();
+        FastLED.show();
+        FastLED.delay(30);
         break;
     default:
         break;

@@ -83,7 +83,7 @@ void NetworkManager::setServer()
 
     server->on("/submitPaletteForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=true;
-        Serial.println("post");
+        Serial.println("post submitPaletteForm");
         if (request->hasParam("selected_item", true))
         {
             String message;
@@ -100,7 +100,7 @@ void NetworkManager::setServer()
 
     server->on("/submitRGBForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        Serial.println("post");
+        Serial.println("post submitRGBForm");
         if (request->hasParam("R", true) && request->hasParam("G", true) && request->hasParam("B", true))
         {
             String red = request->getParam("R", true)->value();
@@ -113,7 +113,7 @@ void NetworkManager::setServer()
 
     server->on("/submitHSVForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        Serial.println("post");
+        Serial.println("post submitHSVForm");
         if (request->hasParam("H", true) && request->hasParam("S", true) && request->hasParam("V", true))
         {
             String hue = request->getParam("H", true)->value();
@@ -139,17 +139,26 @@ void NetworkManager::setServer()
     });
 
     server->on("/showTime", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("post showTime");
         myStripLed->setMode(MyStripLed::Mode::showTime);
         request->send(204);
     });
 
     server->on("/onFire", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("post onFire");
         myStripLed->setMode(MyStripLed::Mode::onFire);
         request->send(204);
     });
 
     server->on("/showWeather", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("post showWeather");
         myStripLed->setMode(MyStripLed::Mode::showWeather);
+        request->send(204);
+    });
+
+    server->on("/off", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        Serial.println("post off");
+        myStripLed->setMode(MyStripLed::Mode::off);
         request->send(204);
     });
 
