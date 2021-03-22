@@ -26,19 +26,21 @@ void NetworkManager::setWifi()
 {
     //----------------------------------------------------WIFI STATTION
     WiFi.mode(WIFI_STA);
+    wm.autoConnect(ssid, password);
+        //  if (!wm.autoConnect(ssid, password))
+        // Serial.println("Erreur de connexion.");
+        // else
+        //   Serial.println("Connexion etablie!");
 
-    if (!wm.autoConnect(ssid, password))
-        Serial.println("Erreur de connexion.");
-    else
-        Serial.println("Connexion etablie!");
-
-    Serial.println("\n");
+        /*  Serial.println("\n");
     Serial.println("Connexion etablie!");
     Serial.print("Adresse IP: ");
-    Serial.println(WiFi.localIP());
+    */
+   // Serial.println(WiFi.localIP());
 
-    // Init and get the time
-    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+        // Init and get the time
+        //  Serial.println(gmtOffset_sec);
+//    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
     //myStripLed.printLocalTime();
 
     //disconnect WiFi as it's no longer needed
@@ -52,7 +54,7 @@ void NetworkManager::setSPIFFS()
     //----------------------------------------------------SPIFFS
     if (!SPIFFS.begin())
     {
-        Serial.println("Erreur SPIFFS...");
+        // Serial.println("Erreur SPIFFS...");
         return;
     }
 
@@ -61,8 +63,8 @@ void NetworkManager::setSPIFFS()
 
     while (file)
     {
-        Serial.print("File: ");
-        Serial.println(file.name());
+        //Serial.print("File: ");
+        //Serial.println(file.name());
         file.close();
         file = root.openNextFile();
     }
@@ -70,8 +72,6 @@ void NetworkManager::setSPIFFS()
 
 void NetworkManager::setServer()
 {
-    myStripLed->setMode(MyStripLed::Mode::showPalette);
-
     //----------------------------------------------------SERVER
     server->on("/", HTTP_GET, [this](AsyncWebServerRequest *request) {
         request->send(SPIFFS, "/index.html", "text/html");
@@ -83,7 +83,7 @@ void NetworkManager::setServer()
 
     server->on("/submitPaletteForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=true;
-        Serial.println("post submitPaletteForm");
+        // Serial.println("post submitPaletteForm");
         if (request->hasParam("selected_item", true))
         {
             String message;
@@ -100,7 +100,7 @@ void NetworkManager::setServer()
 
     server->on("/submitRGBForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        Serial.println("post submitRGBForm");
+        //  Serial.println("post submitRGBForm");
         if (request->hasParam("R", true) && request->hasParam("G", true) && request->hasParam("B", true))
         {
             String red = request->getParam("R", true)->value();
@@ -113,7 +113,7 @@ void NetworkManager::setServer()
 
     server->on("/submitHSVForm", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        Serial.println("post submitHSVForm");
+        // Serial.println("post submitHSVForm");
         if (request->hasParam("H", true) && request->hasParam("S", true) && request->hasParam("V", true))
         {
             String hue = request->getParam("H", true)->value();
@@ -126,7 +126,7 @@ void NetworkManager::setServer()
 
     server->on("/submitColorPicker", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        Serial.println("post submitColorPicker");
+        //  Serial.println("post submitColorPicker");
         if (request->hasParam("colorInput", true))
         {
             String colorCode = request->getParam("colorInput", true)->value();
@@ -139,25 +139,37 @@ void NetworkManager::setServer()
     });
 
     server->on("/showTime", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        Serial.println("post showTime");
-        myStripLed->setMode(MyStripLed::Mode::showTime);
+        //  Serial.println("post showTime");
+       // myStripLed->setMode(MyStripLed::Mode::showTime);
         request->send(204);
     });
 
     server->on("/onFire", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        Serial.println("post onFire");
+        //  Serial.println("post onFire");
         myStripLed->setMode(MyStripLed::Mode::onFire);
         request->send(204);
     });
 
     server->on("/showWeather", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        Serial.println("post showWeather");
+        // Serial.println("post showWeather");
         myStripLed->setMode(MyStripLed::Mode::showWeather);
         request->send(204);
     });
 
+    server->on("/analog", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        // Serial.println("post off");
+        myStripLed->setMode(MyStripLed::Mode::analog);
+        request->send(204);
+    });
+
+    server->on("/turnaround", HTTP_POST, [this](AsyncWebServerRequest *request) {
+        // Serial.println("post off");
+        myStripLed->setLedsTunring();
+        request->send(204);
+    });
+
     server->on("/off", HTTP_POST, [this](AsyncWebServerRequest *request) {
-        Serial.println("post off");
+        // Serial.println("post off");
         myStripLed->setMode(MyStripLed::Mode::off);
         request->send(204);
     });
@@ -181,8 +193,8 @@ StaticJsonDocument<1000> NetworkManager::requestJsonApi()
     if (httpCode > 0)
     {
         String payload = client.getString();
-        Serial.println("http request api satuscode: " + String(httpCode));
-        Serial.println(payload);
+        //Serial.println("http request api satuscode: " + String(httpCode));
+        // Serial.println(payload);
 
         char json[500];
         payload.replace(" ", "");
@@ -201,13 +213,13 @@ StaticJsonDocument<1000> NetworkManager::requestJsonApi()
         {
             client.end();
             return doc;
-            Serial.println(String("deserialisation failed"));
+            // Serial.println(String("deserialisation failed"));
         }
     }
     else
     {
         client.end();
         return doc;
-        Serial.println("Error on HTTP request");
+        // Serial.println("Error on HTTP request");
     }
 }

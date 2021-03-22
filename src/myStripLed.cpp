@@ -28,6 +28,8 @@ MyStripLed::MyStripLed() // Constructor
 
     this->currentPalette = RainbowColors_p;
     this->currentBlending = LINEARBLEND;
+    //setLedsTunring();
+    setMode(Mode::showTime);
 }
 
 void MyStripLed::printLocalTime()
@@ -40,40 +42,13 @@ void MyStripLed::printLocalTime()
     struct tm timeinfo;
     if (!getLocalTime(&timeinfo))
     {
-        Serial.println("Failed to obtain time");
+        //Serial.println("Failed to obtain time");
         return;
     }
-    /* Serial.println(&timeinfo, "%A, %B %d %Y %H:%M:%S");
-    Serial.print("Day of week: ");
-    Serial.println(&timeinfo, "%A");
-    Serial.print("Month: ");
-    Serial.println(&timeinfo, "%B");
-    Serial.print("Day of Month: ");
-    Serial.println(&timeinfo, "%d");
-    Serial.print("Year: ");
-    Serial.println(&timeinfo, "%Y");
-    Serial.print("Hour: ");
-    Serial.println(&timeinfo, "%H");
-    Serial.print("Hour (12 hour format): ");
-    Serial.println(&timeinfo, "%I");
-    Serial.print("Minute: ");
-    Serial.println(&timeinfo, "%M");
-    Serial.print("Second: ");
-    Serial.println(&timeinfo, "%S"); */
-
-    /*Serial.println("Time variables");
-    char timeHour[3];
-    strftime(timeHour, 3, "%H", &timeinfo);
-    Serial.println(timeHour);
-    char timeWeekDay[10];
-    strftime(timeWeekDay, 10, "%A", &timeinfo);
-    Serial.println(timeWeekDay);
-    Serial.println();*/
-
-    //this->leds[0] = CRGB::Blue;
-    //FastLED.show();
 
     char timeHour12_char[3];
+    //Serial.println(timeinfo.tm_mon);
+
     strftime(timeHour12_char, 3, "%I", &timeinfo);
     // Serial.println(timeHour12_char);
     char timeMinute12_char[3];
@@ -91,30 +66,36 @@ void MyStripLed::printLocalTime()
     timeSecond %= 60;
 
     int hoursLed = (timeHour12 * 5 * 60 + timeMinute12 * 5) / 60;
+    // hoursLed = 1+readPotentiometer()*60/MAX_ANALOG;
     // Serial.println(hoursLed);
     //this->leds[hoursLed] = CRGB::Red;
     for (int i = 0; i <= hoursLed; i++)
     {
-        leds[(i + 30) % 60] = hoursLedsColor;
+        leds[(i + OFFSET_LED) % NUM_LEDS] = hoursLedsColor;
     }
+
+    unsigned int monthLed = timeinfo.tm_mon * 5;
+    leds[(monthLed + OFFSET_LED) % NUM_LEDS] = CRGB::White;
+    unsigned int dayLed = timeinfo.tm_mday;
+    leds[(dayLed + OFFSET_LED) % NUM_LEDS] = CRGB::White;
 
     int secondsLed = timeSecond;
     // Serial.println(secondsLed);
-    this->leds[(secondsLed + 30) % 60] = secondsLedsColor;
+    this->leds[(secondsLed + OFFSET_LED) % NUM_LEDS] = secondsLedsColor;
 
     int minutesLed = timeMinute12; // * 12 / 60;
     // Serial.println(minutesLed);
-    this->leds[(minutesLed + 30) % 60] = minutesLedsColor;
+    this->leds[(minutesLed + OFFSET_LED) % NUM_LEDS] = minutesLedsColor;
 
     for (int i = 0; i <= MyStripLed::NUM_LEDS; i++)
     {
-        if (i != hoursLed && i != minutesLed && i != secondsLed)
+        if (i != hoursLed && i != minutesLed && i != secondsLed && i != monthLed && i != dayLed)
         {
-            leds[(i + 30) % 60] %= 1;
+            leds[(i + OFFSET_LED) % NUM_LEDS] %= 1;
         }
         else
         {
-            leds[(i + 30) % 60] %= 100;
+            leds[(i + OFFSET_LED) % NUM_LEDS] %= 100;
         }
     }
 
@@ -124,6 +105,8 @@ void MyStripLed::printLocalTime()
 void MyStripLed::fillLEDsFromPaletteColors(uint8_t colorIndex)
 {
     //uint8_t brightness = this->brightness;
+
+    setBrightness(readPotentiometer() * 255 / MAX_ANALOG);
 
     for (int i = 0; i < MyStripLed::NUM_LEDS; i++)
     {
@@ -277,7 +260,7 @@ CRGB MyStripLed::HeatColor(uint8_t temperature)
 
 void MyStripLed::simulateFire()
 {
-    /* // initialize random seed: 
+    // initialize random seed:
     srand(time(NULL));
 
     for (uint8_t i = 0; i < NUM_LEDS; i++)
@@ -287,10 +270,11 @@ void MyStripLed::simulateFire()
         int b = rand() % 1;
         leds[i] = CRGB(r, g, b);
     }
-    // generate secret number between 1 and 10: 
+    // generate secret number between 1 and 10:
     //int iSecret = rand() % 10 + 1;
 
-    FastLED.show();*/
+    FastLED.show();
+    
     // Fire2012 by Mark Kriegsman, July 2012
     // as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
     //
@@ -319,33 +303,33 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
 {
     StaticJsonDocument<1000> doc = ntwmng->requestJsonApi();
     const char *name = doc["name"];
-    Serial.println(name);
+    //Serial.println(name);
 
     int tempFeel = doc["main"]["temp_min"];
-    Serial.println(tempFeel);
+    //Serial.println(tempFeel);
 
-    int visibility = doc["visibility"];
-    Serial.println(visibility);
+   /* int visibility = doc["visibility"];
+    //Serial.println(visibility);
 
     int id2 = doc["id"];
-    Serial.println(String(id2));
+    //Serial.println(String(id2));
     int cod = doc["cod"];
-    Serial.println(String(cod));
+    //Serial.println(String(cod));
 
-    int id = doc["id"];
+    int id = doc["id"];*/
     //  const char *description = doc["weather"][0]["description"];
 
-    Serial.println(String(id));
-    // Serial.println(description);
+    //Serial.println(String(id));
+    // //Serial.println(description);
 
     //this->setMode(MyStripLed::Mode::showPalette);
-    uint8_t newPalette = 45;
+   // uint8_t newPalette = 45;
     CRGB newColor = CRGB::Green;
-    const char *weather = doc["weather"][0]["main"];
+   // const char *weather = doc["weather"][0]["main"];
     int weatherId = doc["weather"][0]["id"];
-    Serial.println(weatherId);
-    Serial.println(weather);
-    Serial.println(String(weatherId / 100));
+    //Serial.println(weatherId);
+    //Serial.println(weather);
+    //Serial.println(String(weatherId / 100));
 
     switch (int(weatherId / 100))
     {
@@ -354,21 +338,21 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     case 6:
     case 5:
     case 7:
-        newPalette = 25;
+       // newPalette = 25;
         newColor = CRGB::Red;
         break;
 
     case 8:
-        newPalette = 35;
+       // newPalette = 35;
         newColor = CRGB::Blue;
         break;
 
     default:
         break;
     }
-    Serial.println("feellike");
-    Serial.println(tempFeel);
-    Serial.println(newColor);
+    //Serial.println("feellike");
+    //Serial.println(tempFeel);
+    //Serial.println(newColor);
     for (uint8_t i = 0; i < tempFeel; i++)
     {
         leds[i] = newColor;
@@ -382,19 +366,59 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     //this->changePalette(newPalette);
 }
 
+void MyStripLed::goAround()
+{
+    // CRGB leds_cop[NUM_LEDS] = leds;
+    // if (motionSpeed < 0)
+    //{
+    //CRGB init_led = leds[0];
+    for (uint8_t i = 0; i < NUM_LEDS; i++)
+    {
+        leds[i] = leds[(i - motionSpeed) % NUM_LEDS];
+    }
+    // leds[NUM_LEDS - 1] = init_led;
+    //}
+    // leds = leds_cop;
+
+    FastLED.show();
+}
+
+void MyStripLed::controller()
+{
+    fill_solid(leds, NUM_LEDS, CRGB::Black);
+    uint8_t x_pin = 34;
+    uint8_t y_pin = 32;
+    float x_val = 2 * (((analogRead(x_pin) - (2830 - 2048)) / MAX_ANALOG) - .5);
+    float y_val = 2 * (((analogRead(y_pin) - (2830 - 2048)) / MAX_ANALOG) - .5);
+    float dx = acos(x_val);
+    float dy = asin(y_val);
+    leds[(int((dx / PI * NUM_LEDS / 2)) + OFFSET_LED) % NUM_LEDS] = CRGB::Red;
+    leds[(int((dy / PI * NUM_LEDS / 2)) + OFFSET_LED) % NUM_LEDS] = CRGB::Green;
+    //Serial.print(analogRead(x_pin));
+    //Serial.print("\t");
+    //Serial.print(x_val);
+    //Serial.print("\t");
+    //Serial.print(dx);
+    //Serial.print("\t");
+    //Serial.print((int((dx / PI * NUM_LEDS / 2)) + OFFSET_LED) % NUM_LEDS);
+    //Serial.println();
+}
+
 void MyStripLed::update(NetworkManager *ntwmng)
 {
     switch (this->mode)
     {
     case Mode::off:
-        for (uint8_t i = 0; i < NUM_LEDS; i++)
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        /* for (uint8_t i = 0; i < NUM_LEDS; i++)
         {
             if (leds[i])
             {
                 leds[i] = CRGB::Black;
                 FastLED.show();
             }
-        }
+        }*/
+        FastLED.show();
 
         FastLED.delay(500);
         break;
@@ -403,7 +427,7 @@ void MyStripLed::update(NetworkManager *ntwmng)
         FastLED.delay(100);
         break;
     case Mode::showPalette:
-        startIndex += motionSpeed; /* motion speed */
+        startIndex += motionSpeed;
         this->fillLEDsFromPaletteColors(startIndex);
         FastLED.delay(100);
         break;
@@ -419,6 +443,18 @@ void MyStripLed::update(NetworkManager *ntwmng)
         //this->simulateFire();
         FastLED.show();
         FastLED.delay(30);
+        break;
+    case Mode::goAround:
+        goAround();
+        FastLED.delay(100);
+        break;
+    case Mode::controller:
+        controller();
+        FastLED.delay(40);
+        break;
+    case Mode::analog:
+        analog();
+        FastLED.delay(50);
         break;
     default:
         break;

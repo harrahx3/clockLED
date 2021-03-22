@@ -12,10 +12,13 @@ public:
     enum class Mode
     {
         off,
+        goAround,
         showTime,
         showPalette,
         showWeather,
-        onFire
+        onFire,
+        controller,
+        analog
     };
     MyStripLed();
     void printLocalTime(); // Hours=Red, Minutes=Green
@@ -29,8 +32,30 @@ public:
     {
         hoursLedsColor = p_color;
     }
+    void setLedsTunring()
+    {
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        for (uint8_t i = 0; i < NUM_LEDS; i += 5)
+        {
+            leds[(i + 32) % 60] = CRGB::White;
+        }
+        mode = Mode::goAround;
+    }
     void update(NetworkManager *ntwmng);
-
+    void goAround();
+    void controller();
+    void analog()
+    {
+        Serial.println("analog");
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+        float val = analogRead(POTENTIOMETER_PIN)/MAX_ANALOG;
+        Serial.println(val);
+        for (int i = 0; i < val*NUM_LEDS+1; i++)
+        {
+            leds[i] = CRGB::White;
+        }
+        FastLED.show();
+    }
     void setBrightness(unsigned int newB)
     {
         newB = newB < 0 ? 0 : newB;
@@ -38,10 +63,13 @@ public:
         brightness = newB;
     }
 
-    void readPotentiometer()
+    unsigned int readPotentiometer()
     {
         unsigned int val = analogRead(POTENTIOMETER_PIN);
-        setBrightness(val);
+       // Serial.println("sensor: ");
+       // Serial.println(val);
+        //setBrightness(val);
+        return val;
     }
 
     void simulateFire();
@@ -57,7 +85,9 @@ private:
 
     int selectedLed = 0;
 
-    const static uint8_t NUM_LEDS = 60;               // How many leds in your strip?
+    const static uint8_t NUM_LEDS = 60; // How many leds in your strip?
+    const static uint8_t OFFSET_LED = 32; // The top led
+
     uint8_t brightness = 3;                           // brightness for palettes
     const static uint8_t DATA_PIN = 25;               // ESP32 pin for LED control
     const static unsigned int POTENTIOMETER_PIN = 34; // ESP32 pin for Potentiometer -> brightness
@@ -69,7 +99,9 @@ private:
     CRGB secondsLedsColor = CRGB::Blue;
 
     uint8_t startIndex = 0;
-    uint8_t motionSpeed = -1;
+    int motionSpeed = -1;
+
+    float MAX_ANALOG = 4095;
 
     // There are two main parameters you can play with to control the look and
     // feel of your fire: COOLING (used in step 1 above), and SPARKING (used
