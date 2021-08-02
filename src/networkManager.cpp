@@ -7,6 +7,10 @@
 #include <ArduinoJson.h>
 #include <HTTPClient.h>
 #include "networkManager.h"
+#include <iostream>
+#include <string>
+
+using namespace std;
 
 NetworkManager::NetworkManager()
 {
@@ -27,21 +31,20 @@ void NetworkManager::setWifi()
     //----------------------------------------------------WIFI STATTION
     WiFi.mode(WIFI_STA);
     wm.autoConnect(ssid, password);
-        //  if (!wm.autoConnect(ssid, password))
-        // Serial.println("Erreur de connexion.");
-        // else
-        //   Serial.println("Connexion etablie!");
+    //  if (!wm.autoConnect(ssid, password))
+    // Serial.println("Erreur de connexion.");
+    // else
+    //   Serial.println("Connexion etablie!");
 
-        /*  Serial.println("\n");
+    Serial.println("\n");
     Serial.println("Connexion etablie!");
     Serial.print("Adresse IP: ");
-    */
-   // Serial.println(WiFi.localIP());
+    Serial.println(WiFi.localIP());
 
-        // Init and get the time
-        //  Serial.println(gmtOffset_sec);
-//    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
-    //myStripLed.printLocalTime();
+    // Init and get the time
+    //  Serial.println(gmtOffset_sec);
+    configTime(gmtOffset_sec, daylightOffset_sec, ntpServer);
+    // myStripLed.printLocalTime();
 
     //disconnect WiFi as it's no longer needed
     /* WiFi.disconnect(true);
@@ -52,13 +55,14 @@ void NetworkManager::setWifi()
 void NetworkManager::setSPIFFS()
 { //SPI File System
     //----------------------------------------------------SPIFFS
-    if (!SPIFFS.begin())
+    SPIFFS.begin();
+    /*    if (!SPIFFS.begin())
     {
         // Serial.println("Erreur SPIFFS...");
         return;
-    }
+    } */
 
-    File root = SPIFFS.open("/");
+    /*     File root = SPIFFS.open("/");
     File file = root.openNextFile();
 
     while (file)
@@ -67,7 +71,7 @@ void NetworkManager::setSPIFFS()
         //Serial.println(file.name());
         file.close();
         file = root.openNextFile();
-    }
+    } */
 }
 
 void NetworkManager::setServer()
@@ -89,8 +93,8 @@ void NetworkManager::setServer()
             String message;
             message = request->getParam("selected_item", true)->value();
             int secondHand = message.toInt();
-            Serial.println(message);
-            Serial.println(secondHand);
+            //  Serial.println(message);
+            //  Serial.println(secondHand);
 
             myStripLed->setMode(MyStripLed::Mode::showPalette);
             myStripLed->changePalette(secondHand);
@@ -126,21 +130,30 @@ void NetworkManager::setServer()
 
     server->on("/submitColorPicker", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //showPalette=false;
-        //  Serial.println("post submitColorPicker");
+        Serial.println("post submitColorPicker");
         if (request->hasParam("colorInput", true))
         {
             String colorCode = request->getParam("colorInput", true)->value();
             Serial.println("colorCode:");
             Serial.println(colorCode);
-            Serial.println(colorCode.toInt());
-            myStripLed->setHoursColor(CRGB(colorCode.toInt()));
+            Serial.println(colorCode[2]);
+            Serial.println(colorCode.substring(1, 3).c_str());
+           // const char* red_code = [colorCode[1], colorCode[2]];
+            //Serial.println(strtol(red_code, 0, 16));
+            //Serial.println(strtol(colorCode, 0, 16));
+
+            // Serial.println(colorCode.toInt());
+            // myStripLed->setHoursColor(CRGB(colorCode.toInt()));
+           //myStripLed->setHoursColor(CRGB(strtol(colorCode[1], 0, 16) * 16 + strtol(colorCode[2], 0, 16), strtol(colorCode[3], 0, 16) * 16 + strtol(colorCode[4], 0, 16), strtol(colorCode[5], 0, 16) * 16 + strtol(colorCode[6], 0, 16)));
+           myStripLed->setHoursColor(CRGB(strtol(colorCode.substring(1, 3).c_str(), 0, 16), strtol(colorCode.substring(3, 5).c_str(), 0, 16), strtol(colorCode.substring(5).c_str(), 0, 16)));
+
         }
         request->send(204);
     });
 
     server->on("/showTime", HTTP_POST, [this](AsyncWebServerRequest *request) {
         //  Serial.println("post showTime");
-       // myStripLed->setMode(MyStripLed::Mode::showTime);
+        myStripLed->setMode(MyStripLed::Mode::showTime);
         request->send(204);
     });
 
@@ -183,7 +196,7 @@ StaticJsonDocument<1000> NetworkManager::requestJsonApi()
     String apiKey = "0b101241c6ff934b5f348500b3469c60";
     String query = "q=Lyon,fr&units=metric&appid=" + apiKey + "&lang=fr";
     String url = String("http://api.openweathermap.org/data/2.5/weather") + String('?') + query;
-    Serial.println('\n' + url + '\n');
+    //Serial.println('\n' + url + '\n');
 
     client.begin(url);
     int httpCode = client.GET();
@@ -202,7 +215,10 @@ StaticJsonDocument<1000> NetworkManager::requestJsonApi()
         payload.trim();
         //// payload.remove(0, 1);
         payload.toCharArray(json, 1000);
-        Serial.println(payload);
+        // Serial.println(payload);
+        deserializeJson(doc, json);
+        client.end();
+        return doc;
 
         if (deserializeJson(doc, json) == DeserializationError::Ok)
         {

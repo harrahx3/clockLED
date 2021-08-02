@@ -21,7 +21,7 @@ private:
 
     const char *ntpServer = "pool.ntp.org";
     const long gmtOffset_sec = 3600;
-    const int daylightOffset_sec = 0;//3600;
+    const int daylightOffset_sec = 3600; //0;
 
     AsyncWebServer *server; // (80);
     WiFiManager wm;

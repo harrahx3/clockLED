@@ -9,9 +9,17 @@
 #include <stdio.h>  /* printf, scanf, puts, NULL */
 #include <stdlib.h> /* srand, rand */
 #include <time.h>   /* time */
+#include <IRremote.h>
 #include "networkManager.h"
 #include "myStripLed.h"
 //#include "global.h"
+
+inline MyStripLed::Mode operator++(MyStripLed::Mode &eM, int){
+    const MyStripLed::Mode ePrev = eM;
+    const int i = static_cast<int>(eM);
+    eM = static_cast<MyStripLed::Mode>((i+1)%MyStripLed::nbOfMode);
+    return ePrev;
+}
 
 MyStripLed::MyStripLed() // Constructor
 {
@@ -29,11 +37,35 @@ MyStripLed::MyStripLed() // Constructor
     this->currentPalette = RainbowColors_p;
     this->currentBlending = LINEARBLEND;
     //setLedsTunring();
-    setMode(Mode::showTime);
+    setMode(Mode::party);
+    /*
+     * Start the receiver, enable feedback LED and take LED feedback pin from the internal boards definition
+     */
+    IrReceiver.begin(IR_RECEIVE_PIN, ENABLE_LED_FEEDBACK, USE_DEFAULT_FEEDBACK_LED_PIN);
+
+    Serial.print(F("Ready to receive IR signals at pin "));
+    Serial.println(IR_RECEIVE_PIN);
+
+   // touchAttachInterrupt(2, capacitiveTouchCallback, capacitiveThreshold); 
+    //Configure Touchpad as wakeup source
+   // esp_sleep_enable_touchpad_wakeup();
+
+    //Go to sleep now
+    // if (touchRead(CAPACITIVE_TOUCH_PIN) < capacitiveThreshold) {
+    //     Serial.println("Going to sleep now");
+    //     esp_deep_sleep_start();
+    // }
+}
+
+void capacitiveTouchCallback(){
+   //placeholder callback function
+   Serial.println('capacitiveTouchCallback()');
+   
 }
 
 void MyStripLed::printLocalTime()
 {
+    checkIR();
     for (int i = 0; i < MyStripLed::NUM_LEDS; i++)
     {
         leds[i] = CRGB::Black;
@@ -65,6 +97,8 @@ void MyStripLed::printLocalTime()
     timeMinute12 %= 60;
     timeSecond %= 60;
 
+    //updateSun(timeHour12, timeMinute12);
+
     int hoursLed = (timeHour12 * 5 * 60 + timeMinute12 * 5) / 60;
     // hoursLed = 1+readPotentiometer()*60/MAX_ANALOG;
     // Serial.println(hoursLed);
@@ -90,24 +124,17 @@ void MyStripLed::printLocalTime()
     for (int i = 0; i <= MyStripLed::NUM_LEDS; i++)
     {
         if (i != hoursLed && i != minutesLed && i != secondsLed && i != monthLed && i != dayLed)
-        {
             leds[(i + OFFSET_LED) % NUM_LEDS] %= 1;
-        }
         else
-        {
             leds[(i + OFFSET_LED) % NUM_LEDS] %= 100;
-        }
     }
 
-    FastLED.show();
+    // FastLED.show();
 }
 
 void MyStripLed::fillLEDsFromPaletteColors(uint8_t colorIndex)
 {
-    //uint8_t brightness = this->brightness;
-
     setBrightness(readPotentiometer() * 255 / MAX_ANALOG);
-
     for (int i = 0; i < MyStripLed::NUM_LEDS; i++)
     {
         leds[i] = ColorFromPalette(currentPalette, colorIndex, this->brightness, currentBlending);
@@ -182,15 +209,11 @@ void MyStripLed::Fire2012()
 
     // Step 1.  Cool down every cell a little
     for (int i = 0; i < NUM_LEDS; i++)
-    {
         heat[i] = qsub8(heat[i], random8(0, ((COOLING * 10) / NUM_LEDS) + 2));
-    }
 
     // Step 2.  Heat from each cell drifts 'up' and diffuses a little
     for (int k = NUM_LEDS - 3; k > 0; k--)
-    {
         heat[k] = (heat[k - 1] + heat[k - 2] + heat[k - 2]) / 3;
-    }
 
     // Step 3.  Randomly ignite new 'sparks' of heat near the bottom
     if (random8() < SPARKING)
@@ -201,9 +224,7 @@ void MyStripLed::Fire2012()
 
     // Step 4.  Map from heat cells to LED colors
     for (int j = 0; j < NUM_LEDS; j++)
-    {
         leds[j] = HeatColor(heat[j]);
-    }
 }
 
 // CRGB HeatColor( uint8_t temperature)
@@ -273,8 +294,8 @@ void MyStripLed::simulateFire()
     // generate secret number between 1 and 10:
     //int iSecret = rand() % 10 + 1;
 
-    FastLED.show();
-    
+    //  FastLED.show();
+
     // Fire2012 by Mark Kriegsman, July 2012
     // as part of "Five Elements" shown here: http://youtu.be/knWiGsmgycY
     //
@@ -299,6 +320,10 @@ void MyStripLed::simulateFire()
     //
 }
 
+/**
+ * Change the color according to current weather and number of lighting leds according to temperature
+ * @param ntwmng pointer to NetworkManager used to get weather from online API
+ */
 void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
 {
     StaticJsonDocument<1000> doc = ntwmng->requestJsonApi();
@@ -308,7 +333,7 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     int tempFeel = doc["main"]["temp_min"];
     //Serial.println(tempFeel);
 
-   /* int visibility = doc["visibility"];
+    /* int visibility = doc["visibility"];
     //Serial.println(visibility);
 
     int id2 = doc["id"];
@@ -323,9 +348,9 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     // //Serial.println(description);
 
     //this->setMode(MyStripLed::Mode::showPalette);
-   // uint8_t newPalette = 45;
+    // uint8_t newPalette = 45;
     CRGB newColor = CRGB::Green;
-   // const char *weather = doc["weather"][0]["main"];
+    // const char *weather = doc["weather"][0]["main"];
     int weatherId = doc["weather"][0]["id"];
     //Serial.println(weatherId);
     //Serial.println(weather);
@@ -338,30 +363,23 @@ void MyStripLed::changeColorWeather(NetworkManager *ntwmng)
     case 6:
     case 5:
     case 7:
-       // newPalette = 25;
+        // newPalette = 25;
         newColor = CRGB::Red;
         break;
 
     case 8:
-       // newPalette = 35;
+        // newPalette = 35;
         newColor = CRGB::Blue;
-        break;
-
-    default:
         break;
     }
     //Serial.println("feellike");
     //Serial.println(tempFeel);
     //Serial.println(newColor);
     for (uint8_t i = 0; i < tempFeel; i++)
-    {
         leds[i] = newColor;
-    }
     for (uint8_t i = tempFeel; i < NUM_LEDS; i++)
-    {
         leds[i] = CRGB::Black;
-    }
-    FastLED.show();
+    // FastLED.show();
 
     //this->changePalette(newPalette);
 }
@@ -373,14 +391,11 @@ void MyStripLed::goAround()
     //{
     //CRGB init_led = leds[0];
     for (uint8_t i = 0; i < NUM_LEDS; i++)
-    {
         leds[i] = leds[(i - motionSpeed) % NUM_LEDS];
-    }
     // leds[NUM_LEDS - 1] = init_led;
     //}
     // leds = leds_cop;
-
-    FastLED.show();
+    // FastLED.show();
 }
 
 void MyStripLed::controller()
@@ -404,8 +419,199 @@ void MyStripLed::controller()
     //Serial.println();
 }
 
+void MyStripLed::updateSun()
+{
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo))
+    {
+        //Serial.println("Failed to obtain time");
+        return;
+    }
+    /*  Serial.print(timeinfo.tm_hour);
+    Serial.print(" ");
+    Serial.print(timeinfo.tm_min);
+    Serial.print(" ");
+    Serial.println(timeinfo.tm_sec);
+*/
+    if (timeinfo.tm_hour == 7)
+    {
+        // Serial.println(float(timeinfo.tm_sec + 60.*timeinfo.tm_min) / 3600. * 255);
+        uint8_t eased = ease8InOutCubic(float(timeinfo.tm_sec + 60. * timeinfo.tm_min) / 3600. * 255);
+        // Serial.println(eased);
+        for (uint8_t i = 0; i < NUM_LEDS; i++)
+        {
+            leds[i] = CHSV(sin8(float(i) / float(NUM_LEDS) * 255) / 4., 255 - eased, eased); //random8(5, 45)
+        }
+    }
+    else if (timeinfo.tm_hour == 21)
+    {
+        // Serial.println(float(timeinfo.tm_sec + 60.*timeinfo.tm_min) / 3600. * 255);
+        uint8_t eased = ease8InOutCubic(float(timeinfo.tm_sec + 60. * timeinfo.tm_min) / 3600. * 255);
+        // Serial.println(eased);
+        for (uint8_t i = 0; i < NUM_LEDS; i++)
+        {
+            leds[i] = CHSV(sin8(float(i) / float(NUM_LEDS) * 255) / 4., eased, 255 - eased); //random8(5, 45)
+        }
+    }
+    else if (timeinfo.tm_hour < 7 || timeinfo.tm_hour >= 22)
+    {
+        fill_solid(leds, NUM_LEDS, CRGB::Black);
+    }
+    else
+    {
+        for (uint8_t i = 0; i < NUM_LEDS; i++)
+        {
+            leds[i] += (random8(4) - 2) * CRGB(random8(20), 0, 0) + (random8(4) - 2) * CRGB(0, random8(20), 0) + (random8(4) - 2) * CRGB(0, 0, random8(20));
+        }
+    }
+}
+
+void MyStripLed::party()
+{
+    struct tm timeinfo;
+    if (!getLocalTime(&timeinfo))
+    {
+        //Serial.println("Failed to obtain time");
+        return;
+    }
+
+    switch (1 + int(timeinfo.tm_sec / 6))
+    {
+    case 1:
+        rainbow();
+        break;
+    case 2:
+        rainbowWithGlitter();
+        break;
+    case 3:
+        confetti();
+        break;
+    case 4:
+        sinelon();
+        break;
+    case 5:
+        juggle();
+        break;
+    case 6:
+        bpm();
+        break;
+    default:
+        break;
+    }
+    //rainbow, rainbowWithGlitter, confetti, sinelon, juggle, bpm
+    // rainbowWithGlitter();
+
+    // send the 'leds' array out to the actual LED strip
+    // FastLED.show();
+    // insert a delay to keep the framerate modest
+    //FastLED.delay(1000 / FRAMES_PER_SECOND);
+
+    // Call the current pattern function once, updating the 'leds' array
+    // gPatterns[gCurrentPatternNumber]();
+    // do some periodic updates
+    //  EVERY_N_MILLISECONDS(20) { gHue++; }   // slowly cycle the "base color" through the rainbow
+    //  EVERY_N_SECONDS(10) { nextPattern(); } // change patterns periodically
+}
+
+void MyStripLed::checkIR()
+{
+    /*
+     * Check if received data is available and if yes, try to decode it.
+     * Decoded result is in the IrReceiver.decodedIRData structure.
+     *
+     * E.g. command is in IrReceiver.decodedIRData.command
+     * address is in command is in IrReceiver.decodedIRData.address
+     * and up to 32 bit raw data in IrReceiver.decodedIRData.decodedRawData
+     */
+    Serial.println("test IR");
+    if (IrReceiver.decode())
+    {
+        Serial.println("decode IR");
+
+        // Print a short summary of received data
+        IrReceiver.printIRResultShort(&Serial);
+        if (IrReceiver.decodedIRData.protocol == UNKNOWN)
+        {
+            // We have an unknown protocol here, print more info
+            IrReceiver.printIRResultRawFormatted(&Serial, true);
+        }
+        Serial.println();
+
+        /*
+         * !!!Important!!! Enable receiving of the next value,
+         * since receiving has stopped after the end of the current received data packet.
+         */
+        IrReceiver.resume(); // Enable receiving of the next value
+
+        /*
+         * Finally, check the received data and perform actions according to the received command
+         */
+        /*  if (IrReceiver.decodedIRData.command == 0x10)
+        {
+            setHoursColor(CRGB::Red);
+        }
+        else if (IrReceiver.decodedIRData.command == 0x11)
+        {
+            setHoursColor(CRGB::Blue);
+        } */
+        switch (IrReceiver.decodedIRData.command)
+        {
+        case 0x12:
+            setHoursColor(CRGB::Red);
+            break;
+        case 0x5C:
+            setHoursColor(CRGB::Blue);
+            break;
+        case 0x9:
+            setHoursColor(CRGB::Green);
+            break;
+        case 0xC:
+            setHoursColor(CRGB::White);
+            break;
+        case 0x8:
+            //onoff
+            setHoursColor(CRGB::Blue);
+            break;
+        case 0x46:
+            //B+
+            setHoursColor(CRGB::Blue);
+            break;
+        case 0x45:
+            //B-
+            setHoursColor(CRGB::Blue);
+            break;
+        case 0x43:
+            //auto
+            //mode = Mode(int(mode) +1);
+            mode++;
+            break;
+        case 0x44:
+            //save
+            setHoursColor(CRGB::Blue);
+            break;
+        default:
+
+            break;
+        }
+    }
+}
+
 void MyStripLed::update(NetworkManager *ntwmng)
 {
+    //Go to sleep now
+    if (touchRead(CAPACITIVE_TOUCH_PIN) < capacitiveThreshold) {
+        Serial.println("Going to sleep now");
+       // delay(100);
+        if (this->mode == Mode::off) {
+            this->mode = Mode::showTime;
+        } else {
+            this->mode = Mode::off;
+        }
+        delay(500);
+       // touchAttachInterrupt(2, capacitiveTouchCallback, capacitiveThreshold); 
+       // esp_deep_sleep_start();
+    }
+
     switch (this->mode)
     {
     case Mode::off:
@@ -418,22 +624,22 @@ void MyStripLed::update(NetworkManager *ntwmng)
                 FastLED.show();
             }
         }*/
-        FastLED.show();
+        // FastLED.show();
 
-        FastLED.delay(500);
+        //FastLED.delay(500);
         break;
     case Mode::showTime:
         this->printLocalTime();
-        FastLED.delay(100);
+        // FastLED.delay(100);
         break;
     case Mode::showPalette:
         startIndex += motionSpeed;
         this->fillLEDsFromPaletteColors(startIndex);
-        FastLED.delay(100);
+        // FastLED.delay(100);
         break;
     case Mode::showWeather:
         this->changeColorWeather(ntwmng);
-        FastLED.delay(1000 * 5);
+        //  FastLED.delay(1000 * 5);
         break;
     case Mode::onFire:
         // Add entropy to random number generator; we use a lot of it.
@@ -441,22 +647,28 @@ void MyStripLed::update(NetworkManager *ntwmng)
 
         this->Fire2012(); // run simulation frame
         //this->simulateFire();
-        FastLED.show();
-        FastLED.delay(30);
+        // FastLED.show();
+        // FastLED.delay(30);
         break;
     case Mode::goAround:
         goAround();
-        FastLED.delay(100);
+        // FastLED.delay(100);
         break;
     case Mode::controller:
         controller();
-        FastLED.delay(40);
+        // FastLED.delay(40);
         break;
     case Mode::analog:
         analog();
-        FastLED.delay(50);
+        // FastLED.delay(50);
         break;
-    default:
+    case Mode::full:
+        updateSun();
         break;
+    case Mode::party:
+        party();
     }
+
+    FastLED.show();
+    FastLED.delay(50);
 }
